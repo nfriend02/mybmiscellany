@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/firebase/firebaseBootstrap.dart';
 import '../../core/registry/featureModule.dart';
 import '../../core/registry/featureRegistry.dart';
 import '../../core/session/sessionController.dart';
@@ -281,27 +280,24 @@ class _AccountPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<SessionController>().user;
+    if (!user.signedIn) return const SizedBox.shrink();
     final loginLabel = user.loginLabel;
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            user.signedIn ? user.displayName : '게스트',
+            user.displayName,
             style: bodyText(size: 12, color: Colors.white),
           ),
-          if (user.signedIn && loginLabel.isNotEmpty)
+          if (loginLabel.isNotEmpty)
             Text(
               loginLabel,
               style: bodyText(size: 12, color: Colors.white70),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-          Text(
-            FirebaseBootstrap.status,
-            style: labelText(size: 12, color: AppColors.aqua),
-          ),
         ],
       ),
     );
