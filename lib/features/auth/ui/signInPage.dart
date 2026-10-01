@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +23,19 @@ class SignInPage extends StatefulWidget {
 class _SignInPageState extends State<SignInPage> {
   _EnterMode _mode = _EnterMode.choose;
   bool _googleBusy = false;
+  late final TapGestureRecognizer _joinTap;
+
+  @override
+  void initState() {
+    super.initState();
+    _joinTap = TapGestureRecognizer()..onTap = () => context.go('/auth/join');
+  }
+
+  @override
+  void dispose() {
+    _joinTap.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,21 +89,31 @@ class _SignInPageState extends State<SignInPage> {
         ),
         const SizedBox(height: 10),
         StackedButton(
-          label: '이메일 가입',
+          label: '이메일 로그인',
           filled: false,
           onPressed: () => _set(_EnterMode.email),
         ),
         const SizedBox(height: 10),
         StackedButton(
-          label: '휴대폰 전화번호 가입',
+          label: '휴대폰번호 로그인',
           filled: false,
           onPressed: () => _set(_EnterMode.phone),
         ),
-        const SizedBox(height: 10),
-        StackedButton(
-          label: '신규 회원 가입',
-          filled: false,
-          onPressed: () => context.go('/auth/join'),
+        const SizedBox(height: 16),
+        Text.rich(
+          TextSpan(
+            style: bodyText(color: AppColors.muted),
+            children: [
+              const TextSpan(text: '처음이라면 '),
+              TextSpan(
+                text: '신규 회원',
+                style: bodyText(color: AppColors.blue, weight: FontWeight.w700),
+                recognizer: _joinTap,
+              ),
+              const TextSpan(text: ' 가입하여 주세요'),
+            ],
+          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );

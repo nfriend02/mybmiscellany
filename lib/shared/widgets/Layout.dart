@@ -8,11 +8,8 @@ import '../../core/registry/featureRegistry.dart';
 import '../../core/session/sessionController.dart';
 import '../../core/theme/appColors.dart';
 import '../../core/theme/appTheme.dart';
+import 'AppLogo.dart';
 import 'IconSet.dart';
-
-bool isAuthRoute(String location) {
-  return location == '/auth' || location.startsWith('/auth/');
-}
 
 class Layout extends StatefulWidget {
   const Layout({super.key, required this.location, required this.child});
@@ -69,7 +66,6 @@ class _LayoutState extends State<Layout> with SingleTickerProviderStateMixin {
         builder: (context, constraints) {
           final desktop = constraints.maxWidth >= desktopBreakpoint;
           final content = SafeArea(child: widget.child);
-          final showAccount = !isAuthRoute(widget.location);
           if (desktop) {
             return Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -79,17 +75,13 @@ class _LayoutState extends State<Layout> with SingleTickerProviderStateMixin {
                   child: _Sidebar(
                     location: widget.location,
                     closeOnSelect: false,
+                    showAccountLinks: true,
                   ),
                 ),
                 Expanded(
                   child: Scaffold(
                     backgroundColor: Colors.transparent,
-                    body: Column(
-                      children: [
-                        if (showAccount) const _AccountBar(),
-                        Expanded(child: content),
-                      ],
-                    ),
+                    body: content,
                   ),
                 ),
               ],
@@ -102,11 +94,13 @@ class _LayoutState extends State<Layout> with SingleTickerProviderStateMixin {
               backgroundColor: Colors.white.withValues(alpha: 0.88),
               foregroundColor: AppColors.navy,
               elevation: 0,
-              title: Text(
-                'mybmiscellany',
-                style: orbitron(16, color: AppColors.navy),
-              ),
-              actions: [if (showAccount) const _AccountBar(compact: true)],
+              title: const AppLogo(compact: true, onDark: false, markSize: 36),
+              actions: const [
+                Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: _LogoAccountLinks(onDark: false),
+                ),
+              ],
             ),
             drawer: Drawer(
               backgroundColor: AppColors.navy,
@@ -152,10 +146,15 @@ class PageScroll extends StatelessWidget {
 }
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.location, required this.closeOnSelect});
+  const _Sidebar({
+    required this.location,
+    required this.closeOnSelect,
+    this.showAccountLinks = false,
+  });
 
   final String location;
   final bool closeOnSelect;
+  final bool showAccountLinks;
 
   @override
   Widget build(BuildContext context) {
@@ -166,26 +165,19 @@ class _Sidebar extends StatelessWidget {
           children: [
             InkWell(
               onTap: () => _go(context, '/'),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'mybmiscellany',
-                      style: orbitron(16, color: Colors.white),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'PLAY & LEARN',
-                      style: pixel(8, color: AppColors.neonGreen),
-                    ),
-                    const SizedBox(height: 8),
-                    const _LogoAccountLinks(),
-                  ],
-                ),
+              child: const Padding(
+                padding: EdgeInsets.fromLTRB(16, 18, 16, 6),
+                child: AppLogo(markSize: 92),
               ),
             ),
+            if (showAccountLinks)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: Align(
+                  alignment: Alignment.center,
+                  child: _LogoAccountLinks(),
+                ),
+              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -236,62 +228,48 @@ class _Sidebar extends StatelessWidget {
 }
 
 class _LogoAccountLinks extends StatelessWidget {
-  const _LogoAccountLinks();
+  const _LogoAccountLinks({this.onDark = true});
+
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextButton(
-          onPressed: () => context.go('/auth'),
-          child: Text('로그인', style: bodyText(size: 13, color: Colors.white)),
-        ),
-        TextButton(
-          onPressed: () => context.go('/auth/join'),
-          child: Text('회원 가입', style: bodyText(size: 13, color: Colors.white)),
-        ),
-      ],
+    final signedIn = context.watch<SessionController>().user.signedIn;
+    final color = onDark ? Colors.white : AppColors.navy;
+    final first = signedIn
+        ? _link(context, '로그아웃', color, () async {
+            await context.read<SessionController>().signOut();
+            if (context.mounted) context.go('/auth');
+          })
+        : _link(context, '로그인', color, () => context.go('/auth'));
+    final second = signedIn
+        ? _link(context, '마이페이지', color, () => context.go('/me'))
+        : _link(context, '회원 가입', color, () => context.go('/auth/join'));
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [first, const SizedBox(width: 4), second],
     );
   }
-}
 
-class _AccountBar extends StatelessWidget {
-  const _AccountBar({this.compact = false});
-
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final logout = OutlinedButton(
-      style: OutlinedButton.styleFrom(
+  Widget _link(
+    BuildContext context,
+    String label,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return TextButton(
+      style: TextButton.styleFrom(
+        foregroundColor: color,
         visualDensity: VisualDensity.compact,
-        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 14),
-        minimumSize: Size(0, compact ? 36 : 40),
+        padding: EdgeInsets.symmetric(horizontal: onDark ? 10 : 6),
+        minimumSize: const Size(0, 34),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        side: BorderSide(color: onDark ? Colors.white24 : AppColors.line),
       ),
-      onPressed: () async {
-        await context.read<SessionController>().signOut();
-        if (context.mounted) context.go('/auth');
-      },
-      child: const Text('로그아웃'),
-    );
-    final mine = FilledButton(
-      style: FilledButton.styleFrom(
-        visualDensity: VisualDensity.compact,
-        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 14),
-        minimumSize: Size(0, compact ? 36 : 40),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      onPressed: () => context.go('/me'),
-      child: const Text('마이페이지'),
-    );
-    return Padding(
-      padding: EdgeInsets.fromLTRB(4, compact ? 0 : 8, compact ? 4 : 12, 0),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [logout, const SizedBox(width: 8), mine],
+      onPressed: onPressed,
+      child: Text(
+        label,
+        style: bodyText(size: onDark ? 13 : 12, color: color),
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../../../core/registry/featureModule.dart';
 import '../../../core/registry/featureRegistry.dart';
 import '../../../core/theme/appColors.dart';
 import '../../../core/theme/appTheme.dart';
+import '../../../shared/widgets/AppLogo.dart';
 import '../../../shared/widgets/HoverPop.dart';
 import '../../../shared/widgets/IconSet.dart';
 
@@ -34,45 +35,7 @@ class HomeWidget extends StatelessWidget {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'PLAY & LEARN',
-                    style: pixel(11, color: AppColors.neonGreen),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '배우고, 즐기고, 만드는 작업실',
-                    style: orbitron(26, color: Colors.white),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '학습 플랫폼의 안정감과 게임 허브의 활기를 한 화면에 두었습니다. 게임 센터에서 한 판 즐기고, 학습 툴박스에서 결과물을 남기세요.',
-                    style: bodyText(color: Colors.white),
-                  ),
-                  const SizedBox(height: 18),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.neonGreen,
-                          foregroundColor: AppColors.navy,
-                        ),
-                        onPressed: () => context.go('/auth'),
-                        child: const Text('로그인'),
-                      ),
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white),
-                        ),
-                        onPressed: () => context.go('/auth/join'),
-                        child: const Text('회원 가입'),
-                      ),
-                    ],
-                  ),
-                ],
+                children: [const Center(child: AppLogo(markSize: 108))],
               ),
             ),
             const SizedBox(height: 16),

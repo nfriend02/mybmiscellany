@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/appColors.dart';
 import '../../../core/theme/appTheme.dart';
+import '../../../shared/widgets/AppLogo.dart';
 
 const maskedPassword = '*********';
 
@@ -12,43 +13,7 @@ class BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: markSize,
-          height: markSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [AppColors.navy, AppColors.blue, Color(0xFF3A1D6E)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.blue.withValues(alpha: 0.28),
-                blurRadius: 28,
-                offset: const Offset(0, 14),
-              ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Text('myb', style: orbitron(28, color: AppColors.neonGreen)),
-        ),
-        const SizedBox(height: 18),
-        Text(
-          'mybmiscellany',
-          style: orbitron(26, color: AppColors.navy),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'PLAY & LEARN',
-          style: pixel(9, color: AppColors.blue),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
+    return AppLogo(markSize: markSize, onDark: false);
   }
 }
 
