@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import 'package:google_sign_in/google_sign_in.dart';
-
-import '../../core/auth/googleAuth.dart';
 import '../../core/firebase/firebaseBootstrap.dart';
-import '../../core/history/saveResult.dart';
 import '../../core/registry/featureModule.dart';
 import '../../core/registry/featureRegistry.dart';
 import '../../core/session/sessionController.dart';
 import '../../core/theme/appColors.dart';
 import '../../core/theme/appTheme.dart';
 import 'IconSet.dart';
+
+bool isAuthRoute(String location) {
+  return location == '/auth' || location.startsWith('/auth/');
+}
 
 class Layout extends StatefulWidget {
   const Layout({super.key, required this.location, required this.child});
@@ -69,6 +69,7 @@ class _LayoutState extends State<Layout> with SingleTickerProviderStateMixin {
         builder: (context, constraints) {
           final desktop = constraints.maxWidth >= desktopBreakpoint;
           final content = SafeArea(child: widget.child);
+          final showAccount = !isAuthRoute(widget.location);
           if (desktop) {
             return Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -83,7 +84,12 @@ class _LayoutState extends State<Layout> with SingleTickerProviderStateMixin {
                 Expanded(
                   child: Scaffold(
                     backgroundColor: Colors.transparent,
-                    body: content,
+                    body: Column(
+                      children: [
+                        if (showAccount) const _AccountBar(),
+                        Expanded(child: content),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -100,6 +106,7 @@ class _LayoutState extends State<Layout> with SingleTickerProviderStateMixin {
                 'mybmiscellany',
                 style: orbitron(16, color: AppColors.navy),
               ),
+              actions: [if (showAccount) const _AccountBar(compact: true)],
             ),
             drawer: Drawer(
               backgroundColor: AppColors.navy,
@@ -173,6 +180,8 @@ class _Sidebar extends StatelessWidget {
                       'PLAY & LEARN',
                       style: pixel(8, color: AppColors.neonGreen),
                     ),
+                    const SizedBox(height: 8),
+                    const _LogoAccountLinks(),
                   ],
                 ),
               ),
@@ -226,84 +235,87 @@ class _Sidebar extends StatelessWidget {
   }
 }
 
-class _AccountPanel extends StatefulWidget {
-  const _AccountPanel();
+class _LogoAccountLinks extends StatelessWidget {
+  const _LogoAccountLinks();
 
   @override
-  State<_AccountPanel> createState() => _AccountPanelState();
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextButton(
+          onPressed: () => context.go('/auth'),
+          child: Text('로그인', style: bodyText(size: 13, color: Colors.white)),
+        ),
+        TextButton(
+          onPressed: () => context.go('/auth/join'),
+          child: Text('회원 가입', style: bodyText(size: 13, color: Colors.white)),
+        ),
+      ],
+    );
+  }
 }
 
-class _AccountPanelState extends State<_AccountPanel> {
-  bool _busy = false;
+class _AccountBar extends StatelessWidget {
+  const _AccountBar({this.compact = false});
 
-  Future<void> _signIn() async {
-    setState(() => _busy = true);
-    try {
-      final account = await GoogleAuth.signIn();
-      if (!mounted) return;
-      await context.read<SessionController>().applyProfile(
-        displayName: account.displayName ?? account.email,
-        email: account.email,
-        avatarUrl: account.photoUrl ?? '',
-      );
-      if (!mounted) return;
-      showAppMessage(context, '${account.email} 로 로그인했습니다.');
-    } on GoogleSignInException catch (error) {
-      if (!mounted) return;
-      if (error.code == GoogleSignInExceptionCode.canceled) {
-        showAppMessage(context, '로그인을 취소했습니다.');
-      } else {
-        final detail = error.description ?? 'Google 로그인에 실패했습니다.';
-        showAppMessage(
-          context,
-          '$detail 승인된 자바스크립트 원본에 http://localhost:8080 이 있는지 확인해 주세요.',
-        );
-      }
-    } on FormatException catch (error) {
-      if (mounted) showAppMessage(context, error.message);
-    } catch (_) {
-      if (mounted) showAppMessage(context, 'Google 로그인에 실패했습니다.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
+  final bool compact;
 
-  Future<void> _signOut() async {
-    setState(() => _busy = true);
-    try {
-      await GoogleAuth.signOut();
-      if (!mounted) return;
-      await context.read<SessionController>().applyProfile(
-        displayName: '게스트',
-        email: '',
-        avatarUrl: '',
-      );
-    } catch (_) {
-      if (mounted) showAppMessage(context, '로그아웃하지 못했습니다.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  @override
+  Widget build(BuildContext context) {
+    final logout = OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 14),
+        minimumSize: Size(0, compact ? 36 : 40),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: () async {
+        await context.read<SessionController>().signOut();
+        if (context.mounted) context.go('/auth');
+      },
+      child: const Text('로그아웃'),
+    );
+    final mine = FilledButton(
+      style: FilledButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 14),
+        minimumSize: Size(0, compact ? 36 : 40),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: () => context.go('/me'),
+      child: const Text('마이페이지'),
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(4, compact ? 0 : 8, compact ? 4 : 12, 0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [logout, const SizedBox(width: 8), mine],
+      ),
+    );
   }
+}
+
+class _AccountPanel extends StatelessWidget {
+  const _AccountPanel();
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<SessionController>().user;
-    final shortId = user.userId.length > 8
-        ? user.userId.substring(0, 8)
-        : user.userId;
-    final signedIn = user.email.isNotEmpty;
+    final loginLabel = user.loginLabel;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${user.displayName} · $shortId',
+            user.signedIn ? user.displayName : '게스트',
             style: bodyText(size: 12, color: Colors.white),
           ),
-          if (signedIn)
+          if (user.signedIn && loginLabel.isNotEmpty)
             Text(
-              user.email,
+              loginLabel,
               style: bodyText(size: 12, color: Colors.white70),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -311,11 +323,6 @@ class _AccountPanelState extends State<_AccountPanel> {
           Text(
             FirebaseBootstrap.status,
             style: labelText(size: 12, color: AppColors.aqua),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: _busy ? null : (signedIn ? _signOut : _signIn),
-            child: Text(signedIn ? '로그아웃' : 'Google로 로그인'),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -207,7 +208,86 @@ void main() {
     }
     expect(world.completed, isTrue);
     expect(world.winner, isNotNull);
+    expect(createCanonWorld(['가', '나'], pegCount: 0).pegs, isEmpty);
+    expect(createCanonWorld(['가', '나']).pegs, hasLength(5));
+    expect(
+      createCanonWorld(['가', '나'], pegCount: 30, layout: 4).pegs,
+      hasLength(30),
+    );
     expect(world.ranking.first.name, world.winner!.name);
+  });
+
+  test('speed 10 crosses the board width in one second', () {
+    final calm = createCanonWorld(
+      ['가', '나'],
+      duration: 2,
+      pegCount: 0,
+      speedLevel: 10,
+    );
+    expect(calm.cruise, closeTo(calm.width, 0.01));
+    expect(
+      createCanonWorld(['가', '나'], speedLevel: 1).cruise,
+      closeTo(calm.width / 10, 0.01),
+    );
+    expect(
+      createCanonWorld(['가', '나'], speedLevel: 5).cruise,
+      closeTo(calm.width / 2, 0.01),
+    );
+    expect(
+      createCanonWorld(['가', '나'], speedLevel: 20).cruise,
+      closeTo(calm.width * 2, 0.01),
+    );
+    calm.start();
+    var flipped = false;
+    double? initialVx;
+    for (var frame = 0; frame < 180; frame++) {
+      calm.step(1 / 60);
+      final marble = calm.marbles.first;
+      if (marble.launched && initialVx == null) initialVx = marble.vx;
+      if (initialVx != null && marble.vx.sign != initialVx.sign) {
+        flipped = true;
+        break;
+      }
+    }
+    expect(flipped, isTrue);
+    expect(calm.completed, isFalse);
+    final moving = calm.marbles.where((marble) => marble.launched);
+    expect(moving, isNotEmpty);
+    for (final marble in moving) {
+      expect(marble.x, inInclusiveRange(marble.radius, calm.width));
+      expect(marble.y, inInclusiveRange(0, calm.height));
+      final speed = math.sqrt(marble.vx * marble.vx + marble.vy * marble.vy);
+      expect(speed, closeTo(calm.cruise, 1));
+    }
+  });
+
+  test('marbles bounce off each other', () {
+    final world = createCanonWorld(
+      ['가', '나'],
+      duration: 4,
+      pegCount: 0,
+      speedLevel: 5,
+    );
+    world.start();
+    final a = world.marbles[0];
+    final b = world.marbles[1];
+    a.launched = true;
+    b.launched = true;
+    a.x = 200;
+    b.x = 200 + a.radius + b.radius - 2;
+    a.y = 240;
+    b.y = 240;
+    a.vx = world.cruise;
+    a.vy = 0;
+    b.vx = -world.cruise;
+    b.vy = 0;
+    world.step(1 / 60);
+    expect(a.vx, lessThan(0));
+    expect(b.vx, greaterThan(0));
+    final speedA = math.sqrt(a.vx * a.vx + a.vy * a.vy);
+    final speedB = math.sqrt(b.vx * b.vx + b.vy * b.vy);
+    expect(speedA, closeTo(world.cruise, 1));
+    expect(speedB, closeTo(world.cruise, 1));
   });
 
   test('lucky canon stylesheet defines marble colors', () {

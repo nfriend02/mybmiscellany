@@ -35,6 +35,7 @@ class CanonWorld {
     required this.marbles,
     required this.pegs,
     this.duration = 30,
+    this.cruise = 720,
   });
 
   final double width;
@@ -42,6 +43,9 @@ class CanonWorld {
   final List<Marble> marbles;
   final List<Peg> pegs;
   final double duration;
+
+  /// Pixels per second. Speed 10 crosses [width] in one second.
+  final double cruise;
   double time = 0;
   bool firing = false;
   bool completed = false;
@@ -61,8 +65,9 @@ class CanonWorld {
   void step(double dt) {
     if (!firing || completed) return;
     var remaining = dt.clamp(0.0, 0.05);
+    final maxSlice = (6 / cruise).clamp(0.001, 1 / 60);
     while (remaining > 0) {
-      final slice = remaining > 1 / 120 ? 1 / 120 : remaining;
+      final slice = remaining > maxSlice ? maxSlice : remaining;
       _substep(slice);
       remaining -= slice;
       if (completed) return;
@@ -90,42 +95,50 @@ class CanonWorld {
         _launch(marble, i);
       }
       if (!marble.launched || marble.landedAt != null) continue;
-      marble.vy += 1100 * dt;
       marble.x += marble.vx * dt;
       marble.y += marble.vy * dt;
       _walls(marble);
       for (final peg in pegs) {
         _peg(marble, peg);
       }
-      _floor(marble);
     }
     _separateMarbles();
+    _separateMarbles();
+    for (final marble in marbles) {
+      if (marble.launched && marble.landedAt == null) _keepSpeed(marble);
+    }
     _completeIfNeeded();
   }
 
   void _launch(Marble marble, int index) {
     marble.launched = true;
-    final center = (marbles.length - 1) / 2;
-    final angle = -math.pi / 2 + (index - center) * 0.22;
-    final speed = 680 + (index % 4) * 40;
-    marble.x = width / 2;
-    marble.y = height - 46;
-    marble.vx = math.cos(angle) * speed;
-    marble.vy = math.sin(angle) * speed;
+    const angles = [-2.7, -0.45, -1.15, -2.15, -0.85, -1.9, -0.25, -2.4];
+    final angle = angles[index % angles.length];
+    final span = marbles.length <= 1 ? 0.5 : index / (marbles.length - 1);
+    marble.x = width * (0.22 + 0.56 * span);
+    marble.y = height * 0.62;
+    marble.vx = math.cos(angle) * cruise;
+    marble.vy = math.sin(angle) * cruise;
   }
 
   void _walls(Marble marble) {
-    if (marble.x < marble.radius) {
-      marble.x = marble.radius;
-      marble.vx = marble.vx.abs() * 0.82;
+    final left = marble.radius;
+    final right = width - marble.radius;
+    final top = marble.radius + 8;
+    final bottom = height - 18 - marble.radius;
+    if (marble.x < left) {
+      marble.x = left;
+      marble.vx = marble.vx.abs();
+    } else if (marble.x > right) {
+      marble.x = right;
+      marble.vx = -marble.vx.abs();
     }
-    if (marble.x > width - marble.radius) {
-      marble.x = width - marble.radius;
-      marble.vx = -marble.vx.abs() * 0.82;
-    }
-    if (marble.y < marble.radius + 8) {
-      marble.y = marble.radius + 8;
-      marble.vy = marble.vy.abs() * 0.55;
+    if (marble.y < top) {
+      marble.y = top;
+      marble.vy = marble.vy.abs();
+    } else if (marble.y > bottom) {
+      marble.y = bottom;
+      marble.vy = -marble.vy.abs();
     }
   }
 
@@ -145,22 +158,22 @@ class CanonWorld {
     marble.y += ny * (minDistance - distance);
     final impact = marble.vx * nx + marble.vy * ny;
     if (impact < 0) {
-      marble.vx -= 1.86 * impact * nx;
-      marble.vy -= 1.86 * impact * ny;
+      marble.vx -= 2 * impact * nx;
+      marble.vy -= 2 * impact * ny;
     }
   }
 
-  void _floor(Marble marble) {
-    final floor = height - 18 - marble.radius;
-    if (marble.y <= floor) return;
-    marble.y = floor;
-    if (time + 0.15 < duration) {
-      marble.vy = -560 - (marble.index % 4) * 30;
-      marble.vx = marble.vx * 0.35 + (marble.index.isEven ? 120 : -120);
+  void _keepSpeed(Marble marble) {
+    final speed = math.sqrt(marble.vx * marble.vx + marble.vy * marble.vy);
+    if (speed < 1) {
+      final angle = marble.index * 1.7;
+      marble.vx = math.cos(angle) * cruise;
+      marble.vy = math.sin(angle) * cruise;
       return;
     }
-    marble.vx = 0;
-    marble.vy = 0;
+    final scale = cruise / speed;
+    marble.vx *= scale;
+    marble.vy *= scale;
   }
 
   void _separateMarbles() {
@@ -230,6 +243,8 @@ CanonWorld createCanonWorld(
   double height = 520,
   double duration = 30,
   int layout = 0,
+  int pegCount = 5,
+  int speedLevel = 5,
   List<String> icons = const [],
 }) {
   if (names.length < 2) {
@@ -244,12 +259,14 @@ CanonWorld createCanonWorld(
         icon: i < icons.length ? icons[i] : '',
       ),
   ];
+  final level = speedLevel.clamp(1, 20);
   final world = CanonWorld(
     width: width,
     height: height,
     marbles: marbles,
-    pegs: _pegs(layout, width, height),
+    pegs: _pegs(layout, width, height, pegCount),
     duration: duration,
+    cruise: level / 10.0 * width,
   );
   for (var i = 0; i < marbles.length; i++) {
     marbles[i].x = width / 2 + (i - (names.length - 1) / 2) * 20;
@@ -258,7 +275,35 @@ CanonWorld createCanonWorld(
   return world;
 }
 
-List<Peg> _pegs(int layout, double width, double height) {
+List<Peg> _pegs(int layout, double width, double height, int count) {
+  final wanted = count.clamp(0, 30);
+  if (wanted == 0) return [];
+  final pool = _layoutPegs(layout, width, height);
+  if (pool.length == wanted) return pool;
+  if (pool.length > wanted) {
+    return [
+      for (var i = 0; i < wanted; i++)
+        pool[((i + 0.5) * pool.length / wanted).floor().clamp(
+          0,
+          pool.length - 1,
+        )],
+    ];
+  }
+  final random = math.Random(layout + 40);
+  final pegs = [...pool];
+  while (pegs.length < wanted) {
+    pegs.add(
+      Peg(
+        36 + random.nextDouble() * (width - 72),
+        80 + random.nextDouble() * (height - 230),
+        8,
+      ),
+    );
+  }
+  return pegs;
+}
+
+List<Peg> _layoutPegs(int layout, double width, double height) {
   final kind = layout % 6;
   if (kind == 2) return _diamond(width);
   if (kind == 3) return _scattered(width, height, layout);

@@ -13,7 +13,10 @@ Future<void> saveResult(
   required Map<String, dynamic> input,
   required Map<String, dynamic> output,
 }) async {
-  final user = context.read<SessionController>().user;
+  final session = context.read<SessionController>();
+  await session.ensureAppId();
+  if (!context.mounted) return;
+  final user = session.user;
   final entry = await context.read<HistoryRepository>().add(
     user: user,
     featureType: featureType,

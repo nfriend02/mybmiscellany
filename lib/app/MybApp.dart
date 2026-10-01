@@ -5,6 +5,7 @@ import '../core/history/historyRepository.dart';
 import '../core/router/appRouter.dart';
 import '../core/session/sessionController.dart';
 import '../core/theme/appTheme.dart';
+import '../features/auth/ui/siteLeaveGuard.dart';
 import '../features/out-of-office/officeNoticeBoard.dart';
 
 class MybApp extends StatelessWidget {
@@ -24,13 +25,22 @@ class MybApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => HistoryRepository()),
         ChangeNotifierProvider(create: (_) => OfficeNoticeBoard()),
       ],
-      child: MaterialApp.router(
-        title: 'mybmiscellany',
-        theme: buildAppTheme(),
-        scrollBehavior: const AppScrollBehavior(),
-        routerConfig: appRouter,
-        debugShowCheckedModeBanner: false,
-      ),
+      child: const SiteLeaveGuard(child: _RoutedApp()),
+    );
+  }
+}
+
+class _RoutedApp extends StatelessWidget {
+  const _RoutedApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      title: 'mybmiscellany',
+      theme: buildAppTheme(),
+      scrollBehavior: const AppScrollBehavior(),
+      routerConfig: appRouter,
+      debugShowCheckedModeBanner: false,
     );
   }
 }

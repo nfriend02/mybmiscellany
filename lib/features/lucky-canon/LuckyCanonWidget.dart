@@ -102,16 +102,20 @@ class _Setup {
     required this.names,
     required this.icons,
     required this.seconds,
+    required this.obstacles,
+    required this.speed,
     required this.backdrop,
   });
 
   final List<String> names;
   final List<String> icons;
   final int seconds;
+  final int obstacles;
+  final int speed;
   final _Backdrop backdrop;
 
   String get signature =>
-      '${names.join('|')}|${icons.join('|')}|$seconds|${backdrop.layout}';
+      '${names.join('|')}|${icons.join('|')}|$seconds|$obstacles|$speed|${backdrop.layout}';
 }
 
 class LuckyCanonWidget extends StatefulWidget {
@@ -137,6 +141,8 @@ class _LuckyCanonWidgetState extends State<LuckyCanonWidget>
   Timer? _countdownTimer;
   Duration _last = Duration.zero;
   double _seconds = 60;
+  double _obstacles = 5;
+  double _speed = 5;
   int? _count;
   bool _splash = true;
   String? _error;
@@ -201,6 +207,8 @@ class _LuckyCanonWidgetState extends State<LuckyCanonWidget>
       names: [for (final player in _players) player.name],
       icons: [for (final player in _players) player.icon],
       seconds: _seconds.round(),
+      obstacles: _obstacles.round(),
+      speed: _speed.round(),
       backdrop: _backdrop,
     );
   }
@@ -231,6 +239,8 @@ class _LuckyCanonWidgetState extends State<LuckyCanonWidget>
   void _fillExample() {
     _names.text = '하나, 두리, 세리, 넷';
     _seconds = 30;
+    _obstacles = 5;
+    _speed = 5;
     _backdrop = _backdrops.first;
     for (final player in _players) {
       player.icon = _rollIcon(except: player.icon);
@@ -269,6 +279,8 @@ class _LuckyCanonWidgetState extends State<LuckyCanonWidget>
         setup.names,
         duration: setup.seconds.toDouble(),
         layout: setup.backdrop.layout,
+        pegCount: setup.obstacles,
+        speedLevel: setup.speed,
         icons: setup.icons,
       );
       world.start();
@@ -307,6 +319,8 @@ class _LuckyCanonWidgetState extends State<LuckyCanonWidget>
         'names': parseCanonNames(_names.text),
         'icons': [for (final player in _players) player.icon],
         'seconds': _seconds.round(),
+        'obstacles': _obstacles.round(),
+        'speed': _speed.round(),
         'layout': _backdrop.layout,
       },
       output: {'winner': winner.name, 'ranking': ranking, 'text': preview},
@@ -391,6 +405,40 @@ class _LuckyCanonWidgetState extends State<LuckyCanonWidget>
               _confirmed = null;
             }),
           ),
+          Text(
+            '장애물 ${_obstacles.round()}개',
+            style: orbitron(15, color: AppColors.navy),
+          ),
+          Slider(
+            min: 0,
+            max: 30,
+            divisions: 30,
+            value: _obstacles,
+            label: '${_obstacles.round()}개',
+            onChanged: (value) => setState(() {
+              _obstacles = value;
+              _confirmed = null;
+            }),
+          ),
+          Text(
+            '속도 ${_speed.round()}',
+            style: orbitron(15, color: AppColors.navy),
+          ),
+          Slider(
+            min: 1,
+            max: 20,
+            divisions: 19,
+            value: _speed,
+            label: '${_speed.round()}',
+            onChanged: (value) => setState(() {
+              _speed = value;
+              _confirmed = null;
+            }),
+          ),
+          Text(
+            '속도 1은 왼쪽 끝에서 오른쪽 끝까지 10초, 속도 10은 1초입니다.',
+            style: orbitron(12, color: AppColors.muted),
+          ),
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
@@ -452,7 +500,10 @@ class _LuckyCanonWidgetState extends State<LuckyCanonWidget>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('시간 ${_lengthLabel(setup.seconds)}', style: bodyText()),
+                  Text(
+                    '시간 ${_lengthLabel(setup.seconds)} · 장애물 ${setup.obstacles}개 · 속도 ${setup.speed}',
+                    style: bodyText(),
+                  ),
                   const SizedBox(height: 8),
                   _BackdropStrip(backdrop: setup.backdrop),
                   const SizedBox(height: 8),

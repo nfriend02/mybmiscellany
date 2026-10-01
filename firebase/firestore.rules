@@ -15,7 +15,23 @@ service cloud.firestore {
         && request.resource.data.userId == userId
         && request.resource.data.displayName is string
         && request.resource.data.email is string;
+      allow delete: if true;
+    }
+
+    match /identities/{appId} {
+      allow read: if false;
+      allow create, update: if validId(appId)
+        && request.resource.data.appId == appId;
       allow delete: if false;
+    }
+
+    match /members/{loginId} {
+      allow read: if true;
+      allow create, update: if validId(loginId)
+        && request.resource.data.loginId == loginId
+        && request.resource.data.nickname is string
+        && request.resource.data.kind is string;
+      allow delete: if true;
     }
 
     match /results/{resultId} {

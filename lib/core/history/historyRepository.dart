@@ -48,6 +48,14 @@ class HistoryRepository extends ChangeNotifier {
     return updated;
   }
 
+  Future<void> flush() async {
+    for (final entry in [...entries]) {
+      if (entry.sync == CloudSync.synced) continue;
+      final synced = await _gateway.saveResult(entry);
+      if (synced == true) _replace(entry.copyWith(sync: CloudSync.synced));
+    }
+  }
+
   Future<void> delete(String resultId) async {
     entries.removeWhere((entry) => entry.resultId == resultId);
     notifyListeners();
