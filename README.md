@@ -6,10 +6,10 @@ Play & Learn. 학습 툴의 안정감과 게임 허브의 활기를 한 Flutter 
 
 ```bash
 flutter pub get
-flutter run -d web-server --web-hostname localhost --web-port 8080
+flutter run -d web-server --web-hostname localhost --web-port 8080 --dart-define-from-file=secrets/defines.json
 ```
 
-브라우저에서 http://localhost:8080 을 엽니다. Chrome으로 바로 보려면 `flutter run -d chrome` 을 사용합니다.
+`secrets/.env`에 넣은 키는 `secrets/defines.json`으로 옮겨 로컬 실행에만 넘깁니다. 두 파일 모두 git에 올리지 않습니다. 브라우저에서 http://localhost:8080 을 엽니다. Chrome으로 바로 보려면 같은 `--dart-define-from-file`을 `flutter run -d chrome`에 붙입니다. Google 로그인이 거절되면 Cloud 콘솔의 승인된 자바스크립트 원본에 `http://localhost:8080`을 추가합니다.
 
 Android, iOS, Windows 타깃도 같은 프로젝트에서 실행할 수 있습니다. Windows에서 플러그인 빌드가 심볼릭 링크를 요구하면 개발자 모드를 켭니다.
 

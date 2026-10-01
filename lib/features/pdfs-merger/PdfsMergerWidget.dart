@@ -127,9 +127,38 @@ class _PdfsMergerWidgetState extends State<PdfsMergerWidget> {
             ),
           ),
         const SizedBox(height: 8),
-        FilledButton(
-          onPressed: _busy || _files.length < 2 ? null : _merge,
-          child: Text(_busy ? '합치는 중' : '하나로 병합'),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            FilledButton(
+              onPressed: _busy || _files.length < 2 ? null : _merge,
+              child: Text(_busy ? '합치는 중' : '하나로 병합'),
+            ),
+            OutlinedButton(
+              onPressed: _busy
+                  ? null
+                  : () async {
+                      final first = await buildSamplePdf(
+                        'Sample A',
+                        'First page for the merge test.',
+                      );
+                      final second = await buildSamplePdf(
+                        'Sample B',
+                        'Second page for the merge test.',
+                      );
+                      if (!mounted) return;
+                      setState(() {
+                        _files = [
+                          PickedUpload(name: 'sample-a.pdf', bytes: first),
+                          PickedUpload(name: 'sample-b.pdf', bytes: second),
+                        ];
+                        _error = null;
+                      });
+                    },
+              child: const Text('예시 PDF 2개'),
+            ),
+          ],
         ),
         if (_error != null) ...[
           const SizedBox(height: 10),

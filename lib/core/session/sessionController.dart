@@ -26,11 +26,34 @@ class SessionController extends ChangeNotifier {
       }
       user = AppUser(
         userId: id,
-        displayName: '게스트',
-        email: '',
-        avatarUrl: '',
+        displayName: prefs.getString('displayName') ?? '게스트',
+        email: prefs.getString('email') ?? '',
+        avatarUrl: prefs.getString('avatarUrl') ?? '',
         createdAt: created,
       );
+    } catch (_) {}
+    notifyListeners();
+    await _gateway.touchUser(user);
+  }
+
+  Future<void> applyProfile({
+    required String displayName,
+    required String email,
+    required String avatarUrl,
+  }) async {
+    final name = displayName.trim().isEmpty ? '게스트' : displayName.trim();
+    user = AppUser(
+      userId: user.userId,
+      displayName: name,
+      email: email.trim(),
+      avatarUrl: avatarUrl.trim(),
+      createdAt: user.createdAt,
+    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('displayName', user.displayName);
+      await prefs.setString('email', user.email);
+      await prefs.setString('avatarUrl', user.avatarUrl);
     } catch (_) {}
     notifyListeners();
     await _gateway.touchUser(user);

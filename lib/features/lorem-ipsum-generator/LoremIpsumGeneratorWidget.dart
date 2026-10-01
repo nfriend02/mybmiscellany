@@ -71,6 +71,13 @@ class _LoremIpsumGeneratorWidgetState extends State<LoremIpsumGeneratorWidget> {
           spacing: 10,
           children: [
             OutlinedButton(
+              onPressed: () {
+                _seed.text = '다온 작업실';
+                _rebuild(80);
+              },
+              child: const Text('예시 단어'),
+            ),
+            OutlinedButton(
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: _text));
                 if (!context.mounted) return;

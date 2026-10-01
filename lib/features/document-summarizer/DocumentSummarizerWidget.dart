@@ -26,6 +26,13 @@ class _DocumentSummarizerWidgetState extends State<DocumentSummarizerWidget> {
   SummaryResult? _summary;
   String? _error;
   String? _note;
+  bool _busy = false;
+
+  static const _sample =
+      '서울의 아침 공기는 차가웠다. 김다온은 9시 회의 전에 보고서를 다시 읽었다. '
+      '보고서에는 지난달 방문자가 12퍼센트 늘었다고 적혀 있었다. '
+      '다만 모바일에서 이탈이 커서 첫 화면을 단순하게 바꾸자는 제안이 붙었다. '
+      '팀은 목요일까지 시안 두 개를 비교하기로 했다.';
 
   @override
   void dispose() {
@@ -48,14 +55,19 @@ class _DocumentSummarizerWidgetState extends State<DocumentSummarizerWidget> {
     }
   }
 
-  void _summarize() {
+  Future<void> _summarize() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
-      setState(() {
-        _summary = summarizeText(_text.text, _ratio);
-        _error = null;
-      });
+      final summary = await summarizeDocument(_text.text, _ratio);
+      if (!mounted) return;
+      setState(() => _summary = summary);
     } on FormatException catch (error) {
-      setState(() => _error = error.message);
+      if (mounted) setState(() => _error = error.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -76,7 +88,7 @@ class _DocumentSummarizerWidgetState extends State<DocumentSummarizerWidget> {
           onFiles: _loadFile,
         ),
         const SizedBox(height: 8),
-        const NoteText('요약은 TextRank로 문장 중요도를 매긴 뒤, 원래 순서를 유지해 고릅니다.'),
+        const NoteText('Gemini가 연결되어 있으면 그 모델로 요약하고, 실패하면 TextRank로 대신합니다.'),
         if (_note != null) ...[const SizedBox(height: 8), NoteText(_note!)],
         const SizedBox(height: 8),
         Text(
@@ -94,7 +106,19 @@ class _DocumentSummarizerWidgetState extends State<DocumentSummarizerWidget> {
         Wrap(
           spacing: 10,
           children: [
-            FilledButton(onPressed: _summarize, child: const Text('요약하기')),
+            FilledButton(
+              onPressed: _busy ? null : _summarize,
+              child: Text(_busy ? '요약 중' : '요약하기'),
+            ),
+            OutlinedButton(
+              onPressed: _busy
+                  ? null
+                  : () {
+                      _text.text = _sample;
+                      _summarize();
+                    },
+              child: const Text('예시로 요약'),
+            ),
             if (summary != null)
               OutlinedButton(
                 onPressed: () => saveResult(
@@ -119,8 +143,13 @@ class _DocumentSummarizerWidgetState extends State<DocumentSummarizerWidget> {
         ],
         if (summary != null) ...[
           const SizedBox(height: 16),
+          if (summary.notice != null) ...[
+            NoteText(summary.notice!),
+            const SizedBox(height: 8),
+          ],
           ResultPanel(
-            title: '요약 ${summary.selectedCount} / ${summary.sentenceCount}문장',
+            title:
+                '${summary.engine} 요약 ${summary.selectedCount} / ${summary.sentenceCount}',
             child: SelectableText(summary.summary, style: bodyText()),
           ),
         ],

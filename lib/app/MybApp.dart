@@ -5,6 +5,7 @@ import '../core/history/historyRepository.dart';
 import '../core/router/appRouter.dart';
 import '../core/session/sessionController.dart';
 import '../core/theme/appTheme.dart';
+import '../features/out-of-office/officeNoticeBoard.dart';
 
 class MybApp extends StatelessWidget {
   const MybApp({super.key});
@@ -21,6 +22,7 @@ class MybApp extends StatelessWidget {
           },
         ),
         ChangeNotifierProvider(create: (_) => HistoryRepository()),
+        ChangeNotifierProvider(create: (_) => OfficeNoticeBoard()),
       ],
       child: MaterialApp.router(
         title: 'mybmiscellany',

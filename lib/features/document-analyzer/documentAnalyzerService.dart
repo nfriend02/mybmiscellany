@@ -11,6 +11,7 @@ class DocumentAnalysis {
     required this.bytes,
     this.note,
     this.preview = '',
+    this.body = '',
   });
 
   final String filename;
@@ -19,6 +20,7 @@ class DocumentAnalysis {
   final int bytes;
   final String? note;
   final String preview;
+  final String body;
 }
 
 DocumentAnalysis analyzeDocument(Uint8List bytes, String filename) {
@@ -32,5 +34,6 @@ DocumentAnalysis analyzeDocument(Uint8List bytes, String filename) {
     bytes: extracted.bytes,
     note: extracted.note,
     preview: preview.length > 280 ? '${preview.substring(0, 280)}…' : preview,
+    body: extracted.text,
   );
 }

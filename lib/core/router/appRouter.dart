@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../../app/HomeWidget.dart';
+import '../../features/out-of-office/OfficeNoticePage.dart';
 import '../../shared/widgets/Layout.dart';
 import '../registry/featureRegistry.dart';
 
@@ -14,6 +15,11 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/',
           builder: (context, state) => const PageScroll(child: HomeWidget()),
+        ),
+        GoRoute(
+          path: '/out-of-office/notice',
+          builder: (context, state) =>
+              const PageScroll(child: OfficeNoticePage()),
         ),
         for (final feature in FeatureRegistry.all)
           GoRoute(

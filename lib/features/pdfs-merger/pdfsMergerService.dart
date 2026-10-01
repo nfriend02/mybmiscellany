@@ -34,3 +34,23 @@ Future<Uint8List> mergePdfs(List<Uint8List> files) async {
     merged.dispose();
   }
 }
+
+Future<Uint8List> buildSamplePdf(String title, String line) async {
+  final document = PdfDocument();
+  try {
+    final page = document.pages.add();
+    page.graphics.drawString(
+      title,
+      PdfStandardFont(PdfFontFamily.helvetica, 18),
+      bounds: const Rect.fromLTWH(40, 40, 480, 40),
+    );
+    page.graphics.drawString(
+      line,
+      PdfStandardFont(PdfFontFamily.helvetica, 12),
+      bounds: const Rect.fromLTWH(40, 90, 480, 80),
+    );
+    return Uint8List.fromList(await document.save());
+  } finally {
+    document.dispose();
+  }
+}

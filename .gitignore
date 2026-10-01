@@ -46,3 +46,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Local API keys. Keep secrets/.env.example in git.
+secrets/.env
+secrets/defines.json

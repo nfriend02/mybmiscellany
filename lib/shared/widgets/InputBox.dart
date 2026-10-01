@@ -6,6 +6,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../../core/history/saveResult.dart';
 import '../../core/theme/appColors.dart';
 import '../../core/theme/appTheme.dart';
+import '../files/pickUploads.dart';
 
 class PickedUpload {
   const PickedUpload({required this.name, required this.bytes});
@@ -131,30 +132,23 @@ class _InputBoxState extends State<InputBox> {
   }
 
   Future<void> _pickFiles() async {
-    final extensions = widget.allowedExtensions;
-    final type = extensions == null ? widget.fileType : FileType.custom;
-    final List<PlatformFile> files;
-    if (widget.allowMultiple) {
-      files = await FilePicker.pickFiles(
-        type: type,
-        allowedExtensions: extensions,
+    try {
+      final uploads = await pickUploads(
+        allowMultiple: widget.allowMultiple,
+        extensions: widget.allowedExtensions,
+        audio: widget.fileType == FileType.audio,
       );
-    } else {
-      final file = await FilePicker.pickFile(
-        type: type,
-        allowedExtensions: extensions,
-      );
-      files = file == null ? [] : [file];
+      if (!mounted || uploads.isEmpty) return;
+      final picked = [
+        for (final file in uploads)
+          PickedUpload(name: file.name, bytes: file.bytes),
+      ];
+      _setFiles(widget.allowMultiple ? [..._files, ...picked] : picked);
+    } on FormatException catch (error) {
+      if (mounted) showAppMessage(context, error.message);
+    } catch (_) {
+      if (mounted) showAppMessage(context, '파일을 열지 못했습니다.');
     }
-    if (!mounted || files.isEmpty) return;
-    final uploads = <PickedUpload>[];
-    for (final file in files) {
-      uploads.add(
-        PickedUpload(name: file.name, bytes: await file.readAsBytes()),
-      );
-    }
-    if (!mounted) return;
-    _setFiles(widget.allowMultiple ? [..._files, ...uploads] : uploads);
   }
 
   @override

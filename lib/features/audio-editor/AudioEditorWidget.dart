@@ -13,6 +13,7 @@ import '../../shared/widgets/FeatureFrame.dart';
 import '../../shared/widgets/InputBox.dart';
 import '../../shared/widgets/Panels.dart';
 import 'audioEditorService.dart';
+import 'mp3Encoder.dart';
 
 class AudioEditorWidget extends StatefulWidget {
   const AudioEditorWidget({super.key, required this.module});
@@ -146,6 +147,49 @@ class _AudioEditorWidgetState extends State<AudioEditorWidget> {
     }
   }
 
+  Future<void> _exportMp3() async {
+    final file = _file;
+    if (file == null) return;
+    try {
+      final edited = editWav(
+        file.bytes,
+        volume: _volume,
+        startRatio: _trim.start,
+        endRatio: _trim.end,
+      );
+      if (!edited.processed || edited.bytes == null) {
+        if (!mounted) return;
+        setState(() => _status = edited.message);
+        return;
+      }
+      final mp3 = encodeWavToMp3(edited.bytes!);
+      await FilePicker.saveFile(
+        fileName: 'edited.mp3',
+        bytes: mp3,
+        mimeType: 'audio/mpeg',
+      );
+      if (!mounted) return;
+      setState(() => _status = '${edited.message} MP3로도 저장했습니다.');
+      await saveResult(
+        context,
+        featureType: widget.module.featureType,
+        title: file.name,
+        preview: 'MP3 ${mp3.length}바이트',
+        input: {
+          'filename': file.name,
+          'volume': _volume,
+          'trimStart': _trim.start,
+          'trimEnd': _trim.end,
+        },
+        output: {'format': 'mp3', 'bytes': mp3.length, 'text': edited.message},
+      );
+    } on FormatException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'MP3로 저장하지 못했습니다.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final duration = _duration;
@@ -166,7 +210,7 @@ class _AudioEditorWidgetState extends State<AudioEditorWidget> {
         ),
         const SizedBox(height: 8),
         const NoteText(
-          '재생 미리보기는 올린 형식 그대로 볼륨과 구간을 적용합니다. 파일로 저장되는 가공은 16비트 PCM WAV입니다.',
+          '재생 미리보기는 올린 형식 그대로 볼륨과 구간을 적용합니다. WAV와 MP3로 저장되는 가공은 16비트 PCM입니다.',
         ),
         const SizedBox(height: 12),
         Text(
@@ -212,6 +256,16 @@ class _AudioEditorWidgetState extends State<AudioEditorWidget> {
             OutlinedButton(
               onPressed: _file == null ? null : _export,
               child: const Text('WAV로 저장'),
+            ),
+            OutlinedButton(
+              onPressed: _file == null ? null : _exportMp3,
+              child: const Text('MP3로 저장'),
+            ),
+            OutlinedButton(
+              onPressed: () => _load([
+                PickedUpload(name: 'sample-tone.wav', bytes: buildSampleTone()),
+              ]),
+              child: const Text('예시 소리'),
             ),
           ],
         ),

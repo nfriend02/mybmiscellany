@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../core/config/appSecrets.dart';
 import '../../core/format/formatTimestamp.dart';
 import '../../core/history/saveResult.dart';
 import '../../core/registry/featureModule.dart';
@@ -7,6 +10,9 @@ import '../../core/theme/appColors.dart';
 import '../../core/theme/appTheme.dart';
 import '../../shared/widgets/FeatureFrame.dart';
 import '../../shared/widgets/InputBox.dart';
+import '../../shared/widgets/Panels.dart';
+import '../weather/weatherService.dart';
+import 'officeNoticeBoard.dart';
 import 'outOfOfficeService.dart';
 
 class OutOfOfficeWidget extends StatefulWidget {
@@ -23,10 +29,12 @@ class _OutOfOfficeWidgetState extends State<OutOfOfficeWidget> {
   final _role = TextEditingController();
   final _reason = TextEditingController();
   final _contact = TextEditingController();
+  final _city = TextEditingController(text: 'Seoul');
   late DateTime _start;
   late DateTime _returnAt;
   OutOfOfficeMessage? _message;
   String? _error;
+  bool _busy = false;
 
   @override
   void initState() {
@@ -42,6 +50,7 @@ class _OutOfOfficeWidgetState extends State<OutOfOfficeWidget> {
     _role.dispose();
     _reason.dispose();
     _contact.dispose();
+    _city.dispose();
     super.dispose();
   }
 
@@ -75,22 +84,57 @@ class _OutOfOfficeWidgetState extends State<OutOfOfficeWidget> {
     });
   }
 
-  void _buildMessage() {
+  Future<void> _buildMessage() async {
+    late OutOfOfficeMessage message;
     try {
-      setState(() {
-        _message = buildOutOfOffice(
-          name: _name.text,
-          role: _role.text,
-          start: _start,
-          returnAt: _returnAt,
-          reason: _reason.text,
-          contact: _contact.text,
-        );
-        _error = null;
-      });
+      message = buildOutOfOffice(
+        name: _name.text,
+        role: _role.text,
+        start: _start,
+        returnAt: _returnAt,
+        reason: _reason.text,
+        contact: _contact.text,
+      );
     } on FormatException catch (error) {
       setState(() => _error = error.message);
+      return;
     }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    if (AppSecrets.hasOpenWeather && _city.text.trim().isNotEmpty) {
+      try {
+        final weather = await fetchWeather(_city.text);
+        message = OutOfOfficeMessage(
+          text: '${message.text}\n\n현재 날씨: ${weather.summary}',
+          start: message.start,
+          returnAt: message.returnAt,
+        );
+      } on FormatException catch (error) {
+        if (mounted) {
+          setState(() => _error = '안내는 만들었고, 날씨는 붙이지 못했습니다. ${error.message}');
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() => _error = '안내는 만들었고, 날씨 서버에는 연결하지 못했습니다.');
+        }
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _message = message;
+      _busy = false;
+    });
+  }
+
+  void _fillSample() {
+    _name.text = '김다온';
+    _role.text = '기획';
+    _reason.text = '워크숍 참석';
+    _contact.text = 'team@example.com';
+    _city.text = 'Seoul';
+    _buildMessage();
   }
 
   @override
@@ -132,15 +176,38 @@ class _OutOfOfficeWidgetState extends State<OutOfOfficeWidget> {
           controller: _contact,
           maxLines: 1,
         ),
+        const SizedBox(height: 12),
+        InputBox(label: '날씨 도시', hint: 'Seoul', controller: _city, maxLines: 1),
+        const SizedBox(height: 8),
+        NoteText(
+          AppSecrets.hasOpenWeather
+              ? '안내 문구 아래에 그 도시의 현재 날씨를 붙입니다.'
+              : 'OPENWEATHER_API_KEY가 없으면 안내 문구만 만듭니다.',
+        ),
         const SizedBox(height: 16),
         Wrap(
           spacing: 10,
           runSpacing: 10,
           children: [
             FilledButton(
-              onPressed: _buildMessage,
-              child: const Text('안내 문구 만들기'),
+              onPressed: _busy ? null : _buildMessage,
+              child: Text(_busy ? '만드는 중' : '안내 문구 만들기'),
             ),
+            OutlinedButton(
+              onPressed: _busy ? null : _fillSample,
+              child: const Text('예시로 만들기'),
+            ),
+            if (message != null)
+              FilledButton(
+                onPressed: () {
+                  context.read<OfficeNoticeBoard>().publish(
+                    title: '${_name.text.trim()} 부재 안내',
+                    text: message.text,
+                  );
+                  context.go('/out-of-office/notice');
+                },
+                child: const Text('게시하기'),
+              ),
             if (message != null)
               OutlinedButton(
                 onPressed: () => saveResult(

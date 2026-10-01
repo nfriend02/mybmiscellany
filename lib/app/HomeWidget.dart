@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/config/appSecrets.dart';
 import '../core/registry/featureModule.dart';
 import '../core/registry/featureRegistry.dart';
 import '../core/theme/appColors.dart';
@@ -51,6 +52,8 @@ class HomeWidget extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            const _ApiStatus(),
             const SizedBox(height: 28),
             _Section(
               icon: IconSet.gameCenter,
@@ -72,6 +75,41 @@ class HomeWidget extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ApiStatus extends StatelessWidget {
+  const _ApiStatus();
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      ('날씨', AppSecrets.hasOpenWeather),
+      ('환율', AppSecrets.hasExchangeRate),
+      ('Gemini', AppSecrets.hasGemini),
+      ('Google 로그인', AppSecrets.hasOAuth),
+    ];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final item in items)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: item.$2 ? AppColors.neonGreen : AppColors.line,
+              ),
+            ),
+            child: Text(
+              '${item.$1} ${item.$2 ? '준비됨' : '키 없음'}',
+              style: labelText(size: 12, color: AppColors.ink),
+            ),
+          ),
+      ],
     );
   }
 }

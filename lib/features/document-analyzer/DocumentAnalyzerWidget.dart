@@ -1,5 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
+import '../../core/api/geminiClient.dart';
+import '../../core/config/appSecrets.dart';
 import '../../core/history/saveResult.dart';
 import '../../core/registry/featureModule.dart';
 import '../../core/theme/appColors.dart';
@@ -21,7 +26,13 @@ class DocumentAnalyzerWidget extends StatefulWidget {
 class _DocumentAnalyzerWidgetState extends State<DocumentAnalyzerWidget> {
   final _label = TextEditingController();
   DocumentAnalysis? _analysis;
+  String? _insight;
   String? _error;
+  bool _busy = false;
+
+  static const _sample =
+      '서울의 아침 공기는 차가웠다. 김다온은 9시 회의 전에 보고서를 다시 읽었다. '
+      '지난달 방문자는 12퍼센트 늘었고, 모바일 이탈이 커서 첫 화면을 단순하게 바꾸자는 제안이 붙었다.';
 
   @override
   void dispose() {
@@ -29,19 +40,54 @@ class _DocumentAnalyzerWidgetState extends State<DocumentAnalyzerWidget> {
     super.dispose();
   }
 
-  void _analyze(List<PickedUpload> files) {
+  Future<void> _analyze(List<PickedUpload> files) async {
     if (files.isEmpty) return;
     final file = files.last;
+    late DocumentAnalysis analysis;
     try {
-      final analysis = analyzeDocument(file.bytes, file.name);
-      _label.text = file.name;
-      setState(() {
-        _analysis = analysis;
-        _error = null;
-      });
+      analysis = analyzeDocument(file.bytes, file.name);
     } on FormatException catch (error) {
       setState(() => _error = error.message);
+      return;
     }
+    _label.text = file.name;
+    setState(() {
+      _analysis = analysis;
+      _insight = null;
+      _error = null;
+      _busy = true;
+    });
+    if (!AppSecrets.hasGemini || analysis.body.trim().isEmpty) {
+      if (mounted) {
+        setState(() {
+          _insight = AppSecrets.hasGemini
+              ? '본문이 비어 통계만 표시합니다.'
+              : '로컬 통계만 계산했습니다. Gemini 키가 있으면 주제와 문체를 덧붙입니다.';
+          _busy = false;
+        });
+      }
+      return;
+    }
+    try {
+      final insight = await GeminiClient().analyze(analysis.body);
+      if (!mounted) return;
+      setState(() => _insight = insight);
+    } on FormatException catch (error) {
+      if (mounted) setState(() => _insight = error.message);
+    } catch (_) {
+      if (mounted) setState(() => _insight = 'Gemini에 연결하지 못해 통계만 표시합니다.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _loadSample() {
+    _analyze([
+      PickedUpload(
+        name: 'sample.txt',
+        bytes: Uint8List.fromList(utf8.encode(_sample)),
+      ),
+    ]);
   }
 
   @override
@@ -58,6 +104,11 @@ class _DocumentAnalyzerWidgetState extends State<DocumentAnalyzerWidget> {
           enableFile: true,
           allowedExtensions: const ['pdf', 'doc', 'docx', 'txt', 'md'],
           onFiles: _analyze,
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: _busy ? null : _loadSample,
+          child: Text(_busy ? '분석 중' : '예시 문서로 분석'),
         ),
         if (_error != null) ...[
           const SizedBox(height: 10),
@@ -99,6 +150,13 @@ class _DocumentAnalyzerWidgetState extends State<DocumentAnalyzerWidget> {
               );
             },
           ),
+          if (_insight != null) ...[
+            const SizedBox(height: 12),
+            ResultPanel(
+              title: '분석 메모',
+              child: SelectableText(_insight!, style: bodyText()),
+            ),
+          ],
           if (analysis.preview.isNotEmpty) ...[
             const SizedBox(height: 12),
             ResultPanel(

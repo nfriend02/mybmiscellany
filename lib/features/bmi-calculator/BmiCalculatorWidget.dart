@@ -22,6 +22,7 @@ class BmiCalculatorWidget extends StatefulWidget {
 class _BmiCalculatorWidgetState extends State<BmiCalculatorWidget> {
   final _height = TextEditingController();
   final _weight = TextEditingController();
+  final _age = TextEditingController();
   BmiGender _gender = BmiGender.male;
   BmiResult? _result;
   String? _error;
@@ -30,14 +31,16 @@ class _BmiCalculatorWidgetState extends State<BmiCalculatorWidget> {
   void dispose() {
     _height.dispose();
     _weight.dispose();
+    _age.dispose();
     super.dispose();
   }
 
   void _calculate() {
     final height = double.tryParse(_height.text.trim());
     final weight = double.tryParse(_weight.text.trim());
-    if (height == null || weight == null) {
-      setState(() => _error = '키와 몸무게를 숫자로 입력해 주세요.');
+    final age = int.tryParse(_age.text.trim());
+    if (height == null || weight == null || age == null) {
+      setState(() => _error = '키, 몸무게, 나이를 숫자로 입력해 주세요.');
       return;
     }
     try {
@@ -46,6 +49,7 @@ class _BmiCalculatorWidgetState extends State<BmiCalculatorWidget> {
           heightCm: height,
           weightKg: weight,
           gender: _gender,
+          age: age,
         );
         _error = null;
       });
@@ -82,6 +86,15 @@ class _BmiCalculatorWidgetState extends State<BmiCalculatorWidget> {
           ],
         ),
         const SizedBox(height: 12),
+        InputBox(
+          label: '나이',
+          hint: '30',
+          controller: _age,
+          maxLines: 1,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        ),
+        const SizedBox(height: 12),
         SegmentedButton<BmiGender>(
           segments: const [
             ButtonSegment(value: BmiGender.male, label: Text('남')),
@@ -97,6 +110,16 @@ class _BmiCalculatorWidgetState extends State<BmiCalculatorWidget> {
           runSpacing: 10,
           children: [
             FilledButton(onPressed: _calculate, child: const Text('BMI 계산')),
+            OutlinedButton(
+              onPressed: () {
+                _height.text = '170';
+                _weight.text = '65';
+                _age.text = '30';
+                setState(() => _gender = BmiGender.male);
+                _calculate();
+              },
+              child: const Text('예시 170/65'),
+            ),
             if (result != null)
               OutlinedButton(
                 onPressed: () => saveResult(
@@ -108,10 +131,12 @@ class _BmiCalculatorWidgetState extends State<BmiCalculatorWidget> {
                     'heightCm': double.parse(_height.text.trim()),
                     'weightKg': double.parse(_weight.text.trim()),
                     'gender': genderLabel(_gender),
+                    'age': int.parse(_age.text.trim()),
                   },
                   output: {
                     'bmi': double.parse(result.bmi.toStringAsFixed(1)),
                     'category': result.category,
+                    'ageBand': result.ageBand,
                     'targetKg': double.parse(
                       result.targetKg.toStringAsFixed(1),
                     ),
@@ -148,7 +173,7 @@ class _BmiCalculatorWidgetState extends State<BmiCalculatorWidget> {
                   SizedBox(
                     width: width,
                     child: StatTile(
-                      label: '구간',
+                      label: result.ageBand,
                       value: result.category,
                       accent: AppColors.neonPurple,
                     ),

@@ -16,6 +16,8 @@ class IconSet {
     'words-counter': Icons.pin_rounded,
     'document-analyzer': Icons.analytics_rounded,
     'lorem-ipsum-generator': Icons.draw_rounded,
+    'weather': Icons.wb_sunny_rounded,
+    'exchange-rate': Icons.currency_exchange_rounded,
   };
 
   static IconData of(String featureType) =>

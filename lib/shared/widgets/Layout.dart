@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:google_sign_in/google_sign_in.dart';
+
+import '../../core/auth/googleAuth.dart';
 import '../../core/firebase/firebaseBootstrap.dart';
+import '../../core/history/saveResult.dart';
 import '../../core/registry/featureModule.dart';
 import '../../core/registry/featureRegistry.dart';
 import '../../core/session/sessionController.dart';
@@ -67,6 +71,7 @@ class _LayoutState extends State<Layout> with SingleTickerProviderStateMixin {
           final content = SafeArea(child: widget.child);
           if (desktop) {
             return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
                   width: 280,
@@ -75,7 +80,12 @@ class _LayoutState extends State<Layout> with SingleTickerProviderStateMixin {
                     closeOnSelect: false,
                   ),
                 ),
-                Expanded(child: content),
+                Expanded(
+                  child: Scaffold(
+                    backgroundColor: Colors.transparent,
+                    body: content,
+                  ),
+                ),
               ],
             );
           }
@@ -142,10 +152,6 @@ class _Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<SessionController>().user;
-    final shortId = user.userId.length > 8
-        ? user.userId.substring(0, 8)
-        : user.userId;
     return Material(
       color: AppColors.navy,
       child: SafeArea(
@@ -205,22 +211,7 @@ class _Sidebar extends StatelessWidget {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${user.displayName} · $shortId',
-                    style: bodyText(size: 12, color: Colors.white),
-                  ),
-                  Text(
-                    FirebaseBootstrap.status,
-                    style: labelText(size: 12, color: AppColors.aqua),
-                  ),
-                ],
-              ),
-            ),
+            const _AccountPanel(),
           ],
         ),
       ),
@@ -232,6 +223,103 @@ class _Sidebar extends StatelessWidget {
       Navigator.of(context).pop();
     }
     context.go(route);
+  }
+}
+
+class _AccountPanel extends StatefulWidget {
+  const _AccountPanel();
+
+  @override
+  State<_AccountPanel> createState() => _AccountPanelState();
+}
+
+class _AccountPanelState extends State<_AccountPanel> {
+  bool _busy = false;
+
+  Future<void> _signIn() async {
+    setState(() => _busy = true);
+    try {
+      final account = await GoogleAuth.signIn();
+      if (!mounted) return;
+      await context.read<SessionController>().applyProfile(
+        displayName: account.displayName ?? account.email,
+        email: account.email,
+        avatarUrl: account.photoUrl ?? '',
+      );
+      if (!mounted) return;
+      showAppMessage(context, '${account.email} 로 로그인했습니다.');
+    } on GoogleSignInException catch (error) {
+      if (!mounted) return;
+      if (error.code == GoogleSignInExceptionCode.canceled) {
+        showAppMessage(context, '로그인을 취소했습니다.');
+      } else {
+        final detail = error.description ?? 'Google 로그인에 실패했습니다.';
+        showAppMessage(
+          context,
+          '$detail 승인된 자바스크립트 원본에 http://localhost:8080 이 있는지 확인해 주세요.',
+        );
+      }
+    } on FormatException catch (error) {
+      if (mounted) showAppMessage(context, error.message);
+    } catch (_) {
+      if (mounted) showAppMessage(context, 'Google 로그인에 실패했습니다.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _signOut() async {
+    setState(() => _busy = true);
+    try {
+      await GoogleAuth.signOut();
+      if (!mounted) return;
+      await context.read<SessionController>().applyProfile(
+        displayName: '게스트',
+        email: '',
+        avatarUrl: '',
+      );
+    } catch (_) {
+      if (mounted) showAppMessage(context, '로그아웃하지 못했습니다.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<SessionController>().user;
+    final shortId = user.userId.length > 8
+        ? user.userId.substring(0, 8)
+        : user.userId;
+    final signedIn = user.email.isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${user.displayName} · $shortId',
+            style: bodyText(size: 12, color: Colors.white),
+          ),
+          if (signedIn)
+            Text(
+              user.email,
+              style: bodyText(size: 12, color: Colors.white70),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          Text(
+            FirebaseBootstrap.status,
+            style: labelText(size: 12, color: AppColors.aqua),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: _busy ? null : (signedIn ? _signOut : _signIn),
+            child: Text(signedIn ? '로그아웃' : 'Google로 로그인'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

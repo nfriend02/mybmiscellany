@@ -41,6 +41,14 @@ class _WordsCounterWidgetState extends State<WordsCounterWidget> {
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: 8),
+        OutlinedButton(
+          onPressed: () {
+            _text.text = '안녕, Play & Learn. 한글은 2바이트로 셉니다.';
+            setState(() {});
+          },
+          child: const Text('예시 문장'),
+        ),
+        const SizedBox(height: 8),
         const NoteText('한글과 그 외 비ASCII 문자는 2바이트, ASCII는 1바이트로 계산합니다.'),
         const SizedBox(height: 14),
         _Stats(counts: counts),

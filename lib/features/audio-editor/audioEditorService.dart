@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 class WavEditResult {
@@ -120,6 +121,21 @@ Uint8List buildPcm16Wav({
   return header.toBytes();
 }
 
+Uint8List buildSampleTone() {
+  const sampleRate = 44100;
+  const seconds = 2;
+  const frequency = 440.0;
+  final frames = sampleRate * seconds;
+  final pcm = Uint8List(frames * 2);
+  final view = ByteData.sublistView(pcm);
+  for (var i = 0; i < frames; i++) {
+    final sample = (math.sin(2 * math.pi * frequency * i / sampleRate) * 12000)
+        .round();
+    view.setInt16(i * 2, sample, Endian.little);
+  }
+  return buildPcm16Wav(sampleRate: sampleRate, channels: 1, pcm: pcm);
+}
+
 class _Wav {
   const _Wav({
     required this.channels,
@@ -175,5 +191,37 @@ _Wav? _parsePcm16(Uint8List bytes) {
     sampleRate: sampleRate,
     dataOffset: dataOffset,
     dataLength: dataLength,
+  );
+}
+
+class WavPcm {
+  const WavPcm({
+    required this.sampleRate,
+    required this.channels,
+    required this.samples,
+  });
+
+  final int sampleRate;
+  final int channels;
+  final Int16List samples;
+}
+
+WavPcm? readWavPcm(Uint8List bytes) {
+  final parsed = _parsePcm16(bytes);
+  if (parsed == null) return null;
+  final view = ByteData.sublistView(
+    bytes,
+    parsed.dataOffset,
+    parsed.dataOffset + parsed.dataLength,
+  );
+  final count = parsed.dataLength ~/ 2;
+  final samples = Int16List(count);
+  for (var index = 0; index < count; index++) {
+    samples[index] = view.getInt16(index * 2, Endian.little);
+  }
+  return WavPcm(
+    sampleRate: parsed.sampleRate,
+    channels: parsed.channels,
+    samples: samples,
   );
 }

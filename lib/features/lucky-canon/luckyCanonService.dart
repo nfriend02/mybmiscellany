@@ -1,11 +1,17 @@
 import 'dart:math' as math;
 
 class Marble {
-  Marble({required this.name, required this.index, required this.radius});
+  Marble({
+    required this.name,
+    required this.index,
+    required this.radius,
+    this.icon = '',
+  });
 
   final String name;
   final int index;
   final double radius;
+  final String icon;
   double x = 0;
   double y = 0;
   double vx = 0;
@@ -28,12 +34,14 @@ class CanonWorld {
     required this.height,
     required this.marbles,
     required this.pegs,
+    this.duration = 30,
   });
 
   final double width;
   final double height;
   final List<Marble> marbles;
   final List<Peg> pegs;
+  final double duration;
   double time = 0;
   bool firing = false;
   bool completed = false;
@@ -146,13 +154,13 @@ class CanonWorld {
     final floor = height - 18 - marble.radius;
     if (marble.y <= floor) return;
     marble.y = floor;
-    marble.vy = -marble.vy.abs() * 0.2;
-    marble.vx *= 0.7;
-    if (marble.vy.abs() < 48 && marble.vx.abs() < 48) {
-      marble.landedAt = time;
-      marble.vx = 0;
-      marble.vy = 0;
+    if (time + 0.15 < duration) {
+      marble.vy = -560 - (marble.index % 4) * 30;
+      marble.vx = marble.vx * 0.35 + (marble.index.isEven ? 120 : -120);
+      return;
     }
+    marble.vx = 0;
+    marble.vy = 0;
   }
 
   void _separateMarbles() {
@@ -193,11 +201,9 @@ class CanonWorld {
   }
 
   void _completeIfNeeded() {
-    if (!marbles.every((marble) => marble.launched)) return;
-    final allLanded = marbles.every((marble) => marble.landedAt != null);
-    if (!allLanded && time < 16) return;
+    if (time < duration) return;
     for (final marble in marbles) {
-      marble.landedAt ??= time + marble.index * 0.001;
+      marble.landedAt = duration + (height - marble.y) + marble.index * 0.0001;
       marble.vx = 0;
       marble.vy = 0;
     }
@@ -222,17 +228,56 @@ CanonWorld createCanonWorld(
   List<String> names, {
   double width = 720,
   double height = 520,
+  double duration = 30,
+  int layout = 0,
+  List<String> icons = const [],
 }) {
   if (names.length < 2) {
     throw const FormatException('구슬이 될 이름을 두 개 이상 입력해 주세요.');
   }
   final marbles = [
     for (var i = 0; i < names.length; i++)
-      Marble(name: names[i], index: i, radius: 16),
+      Marble(
+        name: names[i],
+        index: i,
+        radius: 16,
+        icon: i < icons.length ? icons[i] : '',
+      ),
   ];
+  final world = CanonWorld(
+    width: width,
+    height: height,
+    marbles: marbles,
+    pegs: _pegs(layout, width, height),
+    duration: duration,
+  );
+  for (var i = 0; i < marbles.length; i++) {
+    marbles[i].x = width / 2 + (i - (names.length - 1) / 2) * 20;
+    marbles[i].y = height - 30;
+  }
+  return world;
+}
+
+List<Peg> _pegs(int layout, double width, double height) {
+  final kind = layout % 6;
+  if (kind == 2) return _diamond(width);
+  if (kind == 3) return _scattered(width, height, layout);
+  if (kind == 4) return _gates(width, height);
+  if (kind == 5) return _rings(width, height);
+  final columns = kind == 1 ? 5 : 7;
+  final rows = kind == 1 ? 8 : 6;
+  final radius = kind == 1 ? 12.0 : 8.0;
+  return _grid(width, height, columns: columns, rows: rows, radius: radius);
+}
+
+List<Peg> _grid(
+  double width,
+  double height, {
+  required int columns,
+  required int rows,
+  required double radius,
+}) {
   final pegs = <Peg>[];
-  const columns = 7;
-  const rows = 6;
   const top = 78.0;
   final bottom = height - 150;
   for (var row = 0; row < rows; row++) {
@@ -241,18 +286,67 @@ CanonWorld createCanonWorld(
     for (var column = 0; column < columns; column++) {
       final x = shift + (column + 0.5) * width / columns;
       if (x < 28 || x > width - 28) continue;
+      pegs.add(Peg(x, y, radius));
+    }
+  }
+  return pegs;
+}
+
+List<Peg> _diamond(double width) {
+  final pegs = <Peg>[];
+  for (var row = 0; row < 8; row++) {
+    final count = row < 4 ? row + 2 : 9 - row;
+    for (var i = 0; i < count; i++) {
+      final x = width / 2 + (i - (count - 1) / 2) * 72;
+      if (x < 28 || x > width - 28) continue;
+      pegs.add(Peg(x, 86 + row * 46, 9));
+    }
+  }
+  return pegs;
+}
+
+List<Peg> _scattered(double width, double height, int layout) {
+  final random = math.Random(layout + 11);
+  return [
+    for (var i = 0; i < 26; i++)
+      Peg(
+        36 + random.nextDouble() * (width - 72),
+        80 + random.nextDouble() * (height - 230),
+        7 + random.nextDouble() * 6,
+      ),
+  ];
+}
+
+List<Peg> _gates(double width, double height) {
+  final pegs = <Peg>[];
+  for (var row = 0; row < 9; row++) {
+    final y = 70 + (height - 210) * row / 8;
+    final gap = width * (0.28 + (row % 3) * 0.12);
+    for (var x = 40.0; x < width - 40; x += 36) {
+      if ((x - width / 2).abs() < gap / 2) continue;
       pegs.add(Peg(x, y, 8));
     }
   }
-  final world = CanonWorld(
-    width: width,
-    height: height,
-    marbles: marbles,
-    pegs: pegs,
-  );
-  for (var i = 0; i < marbles.length; i++) {
-    marbles[i].x = width / 2 + (i - (names.length - 1) / 2) * 20;
-    marbles[i].y = height - 30;
+  return pegs;
+}
+
+List<Peg> _rings(double width, double height) {
+  final pegs = <Peg>[];
+  final centerX = width / 2;
+  final centerY = height * 0.42;
+  for (var ring = 1; ring <= 3; ring++) {
+    final count = 6 + ring * 4;
+    final radius = 50.0 + ring * 58;
+    for (var i = 0; i < count; i++) {
+      final angle = (i / count) * math.pi * 2 + ring * 0.3;
+      pegs.add(
+        Peg(
+          centerX + math.cos(angle) * radius,
+          centerY + math.sin(angle) * radius * 0.72,
+          8,
+        ),
+      );
+    }
   }
-  return world;
+  return pegs;
 }

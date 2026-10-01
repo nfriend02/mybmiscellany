@@ -4,9 +4,13 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mybmiscellany/core/api/geminiClient.dart';
 import 'package:mybmiscellany/core/documents/documentExtractor.dart';
 import 'package:mybmiscellany/core/registry/featureRegistry.dart';
+import 'package:mybmiscellany/features/exchange-rate/exchangeRateService.dart';
+import 'package:mybmiscellany/features/weather/weatherService.dart';
 import 'package:mybmiscellany/features/audio-editor/audioEditorService.dart';
+import 'package:mybmiscellany/features/audio-editor/mp3Encoder.dart';
 import 'package:mybmiscellany/features/bmi-calculator/bmiCalculatorService.dart';
 import 'package:mybmiscellany/features/document-summarizer/documentSummarizerService.dart';
 import 'package:mybmiscellany/features/lorem-ipsum-generator/loremIpsumGeneratorService.dart';
@@ -78,10 +82,24 @@ void main() {
       heightCm: 170,
       weightKg: 70,
       gender: BmiGender.male,
+      age: 30,
     );
     expect(result.bmi, closeTo(24.22, 0.02));
     expect(result.category, '정상');
     expect(result.targetKg, closeTo(63.58, 0.05));
+    expect(result.ageBand, '성인');
+  });
+
+  test('older adults use a wider bmi band', () {
+    final result = calculateBmi(
+      heightCm: 170,
+      weightKg: 75,
+      gender: BmiGender.male,
+      age: 70,
+    );
+    expect(result.bmi, closeTo(25.95, 0.05));
+    expect(result.ageBand, '고령');
+    expect(result.category, '정상');
   });
 
   test('hangul characters count as two bytes', () {
@@ -169,8 +187,19 @@ void main() {
     expect(edited.endSeconds, closeTo(0.25, 0.02));
   });
 
+  test('wav pcm encodes to an mp3 frame', () {
+    final wav = buildPcm16Wav(
+      sampleRate: 44100,
+      channels: 1,
+      pcm: Uint8List(1152 * 4),
+    );
+    final mp3 = encodeWavToMp3(wav);
+    expect(mp3.length, greaterThan(32));
+    expect(mp3[0], 0xFF);
+  });
+
   test('the last marble to land wins', () {
-    final world = createCanonWorld(['가', '나', '다']);
+    final world = createCanonWorld(['가', '나', '다'], duration: 1);
     world.start();
     for (var frame = 0; frame < 60 * 20; frame++) {
       world.step(1 / 60);
@@ -186,5 +215,48 @@ void main() {
         .readAsStringSync();
     expect(css, contains('--lc-marble'));
     expect(css, contains('--lc-cannon'));
+  });
+
+  test('weather parser reads city and temperature', () {
+    final report = parseWeather({
+      'name': 'Seoul',
+      'weather': [
+        {'description': '맑음'},
+      ],
+      'main': {'temp': 18.2, 'humidity': 40},
+      'wind': {'speed': 3.5},
+    });
+    expect(report.city, 'Seoul');
+    expect(report.tempC, 18.2);
+    expect(report.summary, contains('18.2'));
+  });
+
+  test('exchange parser reads a successful pair rate', () {
+    final quote = parseExchange({
+      'result': 'success',
+      'conversion_rate': 1350.5,
+      'base_code': 'USD',
+      'target_code': 'KRW',
+    });
+    expect(quote.from, 'USD');
+    expect(quote.to, 'KRW');
+    expect(quote.converted, 1350.5);
+    expect(() => parseExchange({'result': 'error'}), throwsFormatException);
+  });
+
+  test('gemini text skips thought parts', () {
+    final text = extractGeminiText({
+      'candidates': [
+        {
+          'content': {
+            'parts': [
+              {'text': '생각', 'thought': true},
+              {'text': '요약 결과'},
+            ],
+          },
+        },
+      ],
+    });
+    expect(text, '요약 결과');
   });
 }

@@ -1,13 +1,56 @@
+import '../../core/api/geminiClient.dart';
+import '../../core/config/appSecrets.dart';
+
 class SummaryResult {
   const SummaryResult({
     required this.summary,
     required this.sentenceCount,
     required this.selectedCount,
+    this.engine = 'TextRank',
+    this.notice,
   });
 
   final String summary;
   final int sentenceCount;
   final int selectedCount;
+  final String engine;
+  final String? notice;
+}
+
+Future<SummaryResult> summarizeDocument(String text, double ratio) async {
+  if (!AppSecrets.hasGemini) {
+    return summarizeText(text, ratio);
+  }
+  try {
+    final summary = await GeminiClient().summarize(text, ratio);
+    final sentences = _sentences(text.trim());
+    final selected = summary
+        .split('\n')
+        .where((line) => line.trim().isNotEmpty)
+        .length;
+    return SummaryResult(
+      summary: summary,
+      sentenceCount: sentences.isEmpty ? 1 : sentences.length,
+      selectedCount: selected == 0 ? 1 : selected,
+      engine: 'Gemini',
+    );
+  } on FormatException catch (error) {
+    final local = summarizeText(text, ratio);
+    return SummaryResult(
+      summary: local.summary,
+      sentenceCount: local.sentenceCount,
+      selectedCount: local.selectedCount,
+      notice: '${error.message} TextRank로 대신 요약했습니다.',
+    );
+  } catch (_) {
+    final local = summarizeText(text, ratio);
+    return SummaryResult(
+      summary: local.summary,
+      sentenceCount: local.sentenceCount,
+      selectedCount: local.selectedCount,
+      notice: 'Gemini에 연결하지 못해 TextRank로 대신 요약했습니다.',
+    );
+  }
 }
 
 SummaryResult summarizeText(String text, double ratio) {

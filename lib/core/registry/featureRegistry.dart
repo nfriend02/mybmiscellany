@@ -2,10 +2,12 @@ import '../../features/audio-editor/AudioEditorWidget.dart';
 import '../../features/bmi-calculator/BmiCalculatorWidget.dart';
 import '../../features/document-analyzer/DocumentAnalyzerWidget.dart';
 import '../../features/document-summarizer/DocumentSummarizerWidget.dart';
+import '../../features/exchange-rate/ExchangeRateWidget.dart';
 import '../../features/lorem-ipsum-generator/LoremIpsumGeneratorWidget.dart';
 import '../../features/lucky-canon/LuckyCanonWidget.dart';
 import '../../features/out-of-office/OutOfOfficeWidget.dart';
 import '../../features/pdfs-merger/PdfsMergerWidget.dart';
+import '../../features/weather/WeatherWidget.dart';
 import '../../features/words-counter/WordsCounterWidget.dart';
 import 'featureModule.dart';
 
@@ -44,7 +46,7 @@ class FeatureRegistry {
       featureType: 'document-summarizer',
       title: 'Document Summarizer',
       koreanTitle: '문서 요약',
-      description: 'PDF, DOC, 텍스트를 TextRank로 요약하고 분량을 조절합니다.',
+      description: 'PDF, DOC, 텍스트를 Gemini로 요약합니다. 연결이 없으면 TextRank를 씁니다.',
       emoji: '📄',
       section: FeatureSection.learningToolbox,
       build: (context, module) => DocumentSummarizerWidget(module: module),
@@ -93,6 +95,24 @@ class FeatureRegistry {
       emoji: '✍️',
       section: FeatureSection.learningToolbox,
       build: (context, module) => LoremIpsumGeneratorWidget(module: module),
+    ),
+    FeatureModule(
+      featureType: 'weather',
+      title: 'Weather',
+      koreanTitle: '날씨',
+      description: 'OpenWeather로 도시의 현재 기온, 습도, 바람을 가져옵니다.',
+      emoji: '🌤️',
+      section: FeatureSection.learningToolbox,
+      build: (context, module) => WeatherWidget(module: module),
+    ),
+    FeatureModule(
+      featureType: 'exchange-rate',
+      title: 'Exchange Rate',
+      koreanTitle: '환율',
+      description: 'ExchangeRate-API로 두 통화의 현재 환율과 환산 금액을 보여 줍니다.',
+      emoji: '💱',
+      section: FeatureSection.learningToolbox,
+      build: (context, module) => ExchangeRateWidget(module: module),
     ),
   ];
 
