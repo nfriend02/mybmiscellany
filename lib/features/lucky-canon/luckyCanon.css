@@ -1,0 +1,14 @@
+/* Lucky Canon module tokens. Web injects this sheet; every platform reads the variables. */
+:root {
+  --lc-bg-0: #07111f;
+  --lc-bg-1: #12305c;
+  --lc-bg-2: #241447;
+  --lc-marble: #3dff8a;
+  --lc-marble-2: #b026ff;
+  --lc-marble-3: #ff7a18;
+  --lc-marble-4: #5ce1ff;
+  --lc-obstacle: #d7c6ff;
+  --lc-cannon: #ff7a18;
+  --lc-winner: #3dff8a;
+  --lc-splash: #f7f9fc;
+}

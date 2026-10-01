@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function validId(id) {
+      return id is string && id.size() > 0 && id.size() < 128;
+    }
+
+    function featureTypeOk(value) {
+      return value is string && value.matches('^[a-z0-9]+(-[a-z0-9]+)*$');
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if validId(userId)
+        && request.resource.data.userId == userId
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string;
+      allow delete: if false;
+    }
+
+    match /results/{resultId} {
+      allow read: if true;
+      allow create: if validId(resultId)
+        && request.resource.data.resultId == resultId
+        && request.resource.data.userId is string
+        && featureTypeOk(request.resource.data.featureType)
+        && request.resource.data.input is map
+        && request.resource.data.output is map;
+      allow delete: if true;
+      allow update: if false;
+    }
+
+    match /games/{gameId} {
+      allow read: if true;
+      allow create, update: if validId(gameId)
+        && request.resource.data.gameId == gameId
+        && request.resource.data.name is string;
+      allow delete: if false;
+    }
+
+    match /scores/{scoreId} {
+      allow read: if true;
+      allow create: if validId(scoreId)
+        && request.resource.data.scoreId == scoreId
+        && request.resource.data.gameId is string
+        && request.resource.data.userId is string
+        && request.resource.data.score is number
+        && request.resource.data.rank is number;
+      allow update, delete: if false;
+    }
+
+    match /items/{itemId} {
+      allow read: if true;
+      allow create: if validId(itemId)
+        && request.resource.data.itemId == itemId
+        && request.resource.data.gameId is string
+        && request.resource.data.name is string
+        && request.resource.data.type is string;
+      allow update, delete: if false;
+    }
+
+    match /userItems/{userItemId} {
+      allow read: if true;
+      allow create: if validId(userItemId)
+        && request.resource.data.userItemId == userItemId
+        && request.resource.data.userId is string
+        && request.resource.data.gameId is string
+        && request.resource.data.itemId is string;
+      allow update, delete: if false;
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create: if validId(matchId)
+        && request.resource.data.matchId == matchId
+        && request.resource.data.gameId is string
+        && request.resource.data.players is list
+        && request.resource.data.winnerId is string;
+      allow update, delete: if false;
+    }
+  }
+}
